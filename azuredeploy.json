@@ -4,11 +4,10 @@
   "parameters": {
     "webAppName": {
       "type": "string",
-      "defaultValue": "yourname",
       "minLength": 2,
       "maxLength": 20,
       "metadata": {
-        "description": "Enter your name or alias (e.g., john). The app will be named: memoryleak-{yourname}-XXXX"
+        "description": "Your alias (e.g. john). Final name: memoryleak-{alias}-XXXX"
       }
     },
     "sku": {
