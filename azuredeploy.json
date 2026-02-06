@@ -11,9 +11,9 @@
     }
   },
   "variables": {
-    "resourceGroupName": "[concat('MemoryLeakLab-', uniqueString(subscription().subscriptionId, deployment().name))]",
-    "hostingPlanName": "[concat('asp-memoryleak-', uniqueString(subscription().subscriptionId))]",
-    "siteName": "[concat('memoryleak', uniqueString(subscription().subscriptionId, deployment().name))]",
+    "resourceGroupName": "[concat('AppMemdumpanalysis-', uniqueString(subscription().subscriptionId, deployment().name))]",
+    "hostingPlanName": "[concat('asp-memdump-', uniqueString(subscription().subscriptionId))]",
+    "siteName": "[concat('memdumplab', uniqueString(subscription().subscriptionId, deployment().name))]",
     "sku": "B1",
     "repoURL": "https://github.com/breadh1/AppServicePerfTraining.git",
     "branch": "main"
