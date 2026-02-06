@@ -65,8 +65,8 @@ az monitor autoscale rule create \
   --resource-group myResourceGroup \
   --autoscale-name myAutoscale \
   --scale to 5 \
-  --start-time "2024-01-01T09:00:00Z" \
-  --end-time "2024-01-01T18:00:00Z" \
+  --start-time "YYYY-MM-DDT09:00:00Z" \
+  --end-time "YYYY-MM-DDT18:00:00Z" \
   --recurrence frequency week days Monday Tuesday Wednesday Thursday Friday
 ```
 
