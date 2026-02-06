@@ -2,8 +2,9 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "variables": {
-    "hostingPlanName": "[concat('asp-memdump-', uniqueString(resourceGroup().id))]",
-    "siteName": "[concat('memdumplab', uniqueString(resourceGroup().id))]",
+    "suffix": "[substring(uniqueString(resourceGroup().id), 0, 4)]",
+    "hostingPlanName": "[concat('asp-memdump-', variables('suffix'))]",
+    "siteName": "[concat('memdumplab', variables('suffix'))]",
     "sku": "B1",
     "repoURL": "https://github.com/breadh1/AppServicePerfTraining.git",
     "branch": "main"
