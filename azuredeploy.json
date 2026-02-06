@@ -1,61 +1,100 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastasia",
+      "metadata": {
+        "description": "Location for the resources"
+      }
+    }
+  },
   "variables": {
-    "hostingPlanName": "[replace(resourceGroup().name,'.','')]",
-    "siteName": "[concat('memoryleak', uniqueString(resourceGroup().id))]",
+    "resourceGroupName": "[concat('MemoryLeakLab-', uniqueString(subscription().subscriptionId, deployment().name))]",
+    "hostingPlanName": "[concat('asp-memoryleak-', uniqueString(subscription().subscriptionId))]",
+    "siteName": "[concat('memoryleak', uniqueString(subscription().subscriptionId, deployment().name))]",
     "sku": "B1",
     "repoURL": "https://github.com/breadh1/AppServicePerfTraining.git",
     "branch": "main"
   },
   "resources": [
     {
+      "type": "Microsoft.Resources/resourceGroups",
       "apiVersion": "2022-09-01",
-      "name": "[variables('hostingPlanName')]",
-      "type": "Microsoft.Web/serverfarms",
-      "location": "[resourceGroup().location]",
-      "sku": {
-        "name": "[variables('sku')]"
-      },
-      "kind": "linux",
-      "properties": {
-        "reserved": true
-      }
+      "name": "[variables('resourceGroupName')]",
+      "location": "[parameters('location')]",
+      "properties": {}
     },
     {
+      "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "[variables('siteName')]",
-      "type": "Microsoft.Web/sites",
-      "location": "[resourceGroup().location]",
+      "name": "webAppDeployment",
+      "resourceGroup": "[variables('resourceGroupName')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+        "[resourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
       ],
-      "kind": "app,linux",
       "properties": {
-        "serverFarmId": "[variables('hostingPlanName')]",
-        "siteConfig": {
-          "linuxFxVersion": "DOTNETCORE|9.0",
-          "alwaysOn": true
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "apiVersion": "2022-09-01",
+              "name": "[variables('hostingPlanName')]",
+              "type": "Microsoft.Web/serverfarms",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[variables('sku')]"
+              },
+              "kind": "linux",
+              "properties": {
+                "reserved": true
+              }
+            },
+            {
+              "apiVersion": "2022-09-01",
+              "name": "[variables('siteName')]",
+              "type": "Microsoft.Web/sites",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+              ],
+              "kind": "app,linux",
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "siteConfig": {
+                  "linuxFxVersion": "DOTNETCORE|9.0",
+                  "alwaysOn": true
+                }
+              },
+              "resources": [
+                {
+                  "apiVersion": "2022-09-01",
+                  "name": "web",
+                  "type": "sourcecontrols",
+                  "dependsOn": [
+                    "[resourceId('Microsoft.Web/Sites', variables('siteName'))]"
+                  ],
+                  "properties": {
+                    "RepoUrl": "[variables('repoURL')]",
+                    "branch": "[variables('branch')]",
+                    "IsManualIntegration": true
+                  }
+                }
+              ]
+            }
+          ]
         }
-      },
-      "resources": [
-        {
-          "apiVersion": "2022-09-01",
-          "name": "web",
-          "type": "sourcecontrols",
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/Sites', variables('siteName'))]"
-          ],
-          "properties": {
-            "RepoUrl": "[variables('repoURL')]",
-            "branch": "[variables('branch')]",
-            "IsManualIntegration": true
-          }
-        }
-      ]
+      }
     }
   ],
   "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[variables('resourceGroupName')]"
+    },
     "webAppUrl": {
       "type": "string",
       "value": "[concat('https://', variables('siteName'), '.azurewebsites.net')]"
