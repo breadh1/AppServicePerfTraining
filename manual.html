@@ -826,29 +826,35 @@ cd publish && zip -r ../app.zip .
 az webapp deploy --resource-group rg-memoryleak-training \
     --name memoryleak-training --src-path ../app.zip --type zip</code></pre>
 
-            <h3>Recommended SKU</h3>
+            <h3>SKU Selection</h3>
+            <div class="info-box">
+                <strong>Any SKU works!</strong> For memory dump analysis training, the SKU choice doesn't matter. We only need the app to run and generate memory leaks. Choose based on your budget:
+            </div>
             <table>
                 <tr>
                     <th>SKU</th>
                     <th>Memory</th>
-                    <th>Recommendation</th>
+                    <th>Cost/Month (Est.)</th>
                 </tr>
                 <tr>
                     <td><strong>B1 (Basic)</strong></td>
                     <td>1.75 GB</td>
-                    <td>✅ Best for training - leak visible quickly</td>
+                    <td>~$55 USD ✅ Recommended for training</td>
                 </tr>
                 <tr>
-                    <td><strong>S1 (Standard)</strong></td>
-                    <td>1.75 GB</td>
-                    <td>Good for production-like scenarios</td>
-                </tr>
-                <tr>
-                    <td><strong>P1v2 (Premium)</strong></td>
+                    <td><strong>B2 (Basic)</strong></td>
                     <td>3.5 GB</td>
-                    <td>More memory, longer to see impact</td>
+                    <td>~$110 USD</td>
+                </tr>
+                <tr>
+                    <td><strong>B3 (Basic)</strong></td>
+                    <td>7 GB</td>
+                    <td>~$219 USD</td>
                 </tr>
             </table>
+            <div class="warning-box">
+                <strong>Remember:</strong> Delete the resource group after training to avoid charges!
+            </div>
         </div>
 
         <!-- Troubleshooting -->
