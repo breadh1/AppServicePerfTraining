@@ -1,0 +1,840 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 2 - Memory Leak Analysis</title>
+    <style>
+        :root {
+            --primary: #0078d4;
+            --primary-dark: #106ebe;
+            --primary-light: #deecf9;
+            --success: #107c10;
+            --success-light: #dff6dd;
+            --warning: #ff8c00;
+            --warning-light: #fff4ce;
+            --danger: #d13438;
+            --danger-light: #fde7e9;
+            --bg-light: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #323130;
+            --text-secondary: #605e5c;
+            --border: #e1dfdd;
+            --shadow: rgba(0, 0, 0, 0.08);
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.8;
+            color: var(--text-primary);
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        header {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px var(--shadow);
+            border-left: 5px solid var(--primary);
+        }
+        
+        header h1 {
+            font-size: 2em;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .qa-type {
+            background: var(--warning-light);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid var(--warning);
+        }
+        
+        .qa-type strong {
+            color: #986000;
+        }
+        
+        .section {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 25px 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+        
+        .section h2 {
+            color: var(--primary);
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-light);
+        }
+        
+        .section h3 {
+            color: var(--text-primary);
+            font-size: 1.2em;
+            margin: 25px 0 15px 0;
+        }
+        
+        .purpose {
+            background: var(--primary-light);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        
+        .purpose p {
+            margin: 0;
+            color: var(--primary-dark);
+        }
+        
+        .steps {
+            counter-reset: step-counter;
+        }
+        
+        .step {
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 30px;
+        }
+        
+        .step::before {
+            counter-increment: step-counter;
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 35px;
+            height: 35px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1em;
+        }
+        
+        .step-content {
+            padding-top: 5px;
+        }
+        
+        .step-content p {
+            margin-bottom: 15px;
+        }
+        
+        .screenshot {
+            background: #f0f0f0;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .screenshot img {
+            max-width: 100%;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+        
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .deploy-button {
+            display: inline-block;
+            margin: 10px 0;
+        }
+        
+        .deploy-button img {
+            height: 40px;
+        }
+        
+        .info-box {
+            background: #e6f3ff;
+            border-left: 4px solid var(--primary);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        
+        .warning-box {
+            background: var(--warning-light);
+            border-left: 4px solid var(--warning);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        
+        .success-box {
+            background: var(--success-light);
+            border-left: 4px solid var(--success);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        
+        .nav-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .nav-links a {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        
+        .nav-links a:hover {
+            background: var(--primary-dark);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Lab 2 - Memory Leak Analysis</h1>
+        </header>
+
+        <div class="qa-type">
+            <strong>QA Platform Type:</strong> Lab
+        </div>
+
+        <div class="purpose">
+            <p><strong>Purpose:</strong> We will create a simple app which can reproduce the memory leak issue, and we will capture memory dump and do the dump analysis for it.</p>
+        </div>
+
+        <div class="section">
+            <h2>The Detailed Steps</h2>
+            
+            <h3>Deploy the Sample App</h3>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-content">
+                        <p>Click the <strong>Deploy to Azure</strong> button on the README page from this GitHub repository:</p>
+                        <p><a href="https://github.com/breadh1/AppServicePerfTraining" target="_blank">AppServicePerfTraining - GitHub Repository</a></p>
+                        <div class="deploy-button">
+                            <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fbreadh1%2FAppServicePerfTraining%2Fmain%2Fazuredeploy.json" target="_blank">
+                                <img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure">
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p>Fill in the <strong>Resource group</strong> name (create new or select existing) and click the <strong>"Review + Create"</strong> button.</p>
+                        <div class="screenshot"><img src="pic01.png" alt="Azure Portal custom deployment page"></div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p>After the deployment is completed, you should see one App Service and one App Service Plan were created:</p>
+                        <ul>
+                            <li><code>memdumplabxxxx</code> - Web App</li>
+                            <li><code>asp-memdump-xxxx</code> - App Service Plan</li>
+                        </ul>
+                        <div class="screenshot"><img src="pic02.png" alt="Azure Portal showing deployed resources"></div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Reproduce the Memory Leak Issue</h3>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-content">
+                        <p>Navigate to your App Service URL: <code>https://memdumplabxxxx.azurewebsites.net</code></p>
+                        <p>You will see the Memory Leak Training Dashboard.</p>
+                        <div class="screenshot"><img src="pic07.png" alt="Memory Leak Training Dashboard"></div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p>Click the <strong>"Start Leak"</strong> button to begin continuous memory leak (~5MB/sec, 10MB every 2 seconds).</p>
+                        <p>Or use the slider to inject a specific amount of memory (10-200MB) and click <strong>"Inject Memory"</strong>.</p>
+                        <div class="screenshot"><img src="pic06.png" alt="Dashboard with memory leak in progress"></div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p>Monitor the memory growth in the dashboard. You will see:</p>
+                        <ul>
+                            <li>Leaked Memory (MB) increasing</li>
+                            <li>Object Count increasing</li>
+                            <li>GC Heap Size growing</li>
+                        </ul>
+                        <div class="info-box">
+                            <strong>Tip:</strong> Let the memory grow to 300-500MB before capturing a dump for better analysis.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Capture Memory Dump via Kudu</h3>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-content">
+                        <p>Open the Kudu console by navigating to: <code>https://memdumplabxxxx.scm.azurewebsites.net</code></p>
+                        <p>Or from Azure Portal Your App Service <strong>"Advanced Tools"</strong> Click <strong>"Go"</strong></p>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p>In Kudu, click <strong>"Process explorer"</strong> from the top menu.</p>
+                        <p>Find the <strong>w3wp.exe</strong> process and note its <strong>PID</strong> (Process ID).</p>
+                        <div class="screenshot"><img src="pic03.png" alt="Kudu Process Explorer showing PID"></div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p>Go to <strong>"Debug console"</strong> <strong>"CMD"</strong> from the top menu.</p>
+                        <p>Run the following procdump command to capture memory dumps:</p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.95em;"><code>procdump.exe -accepteula -ma -r -n 3 -s 10 [PID] C:\home\logfiles\</code></pre>
+                        <div class="info-box">
+                            <strong>Command Parameters:</strong>
+                            <ul style="margin-top: 10px; margin-left: 20px;">
+                                <li><code>-accepteula</code> - Accept the license agreement</li>
+                                <li><code>-ma</code> - Full memory dump (all memory)</li>
+                                <li><code>-r</code> - Clone dump (avoids 0x8007000D errors)</li>
+                                <li><code>-n 3</code> - Capture 3 dumps</li>
+                                <li><code>-s 10</code> - Wait 10 seconds between dumps</li>
+                                <li><code>[PID]</code> - Replace with the actual PID from Step 2</li>
+                            </ul>
+                        </div>
+                        <div class="warning-box">
+                            <strong>Important:</strong> Make sure you have already clicked the <strong>"Start Leak"</strong> button on the dashboard before capturing dumps. The memory should be growing to capture meaningful data.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p>After the command completes, you will see 3 dump files created in <code>C:\home\logfiles\</code>.</p>
+                        <div class="screenshot"><img src="pic05.png" alt="Procdump command completed"></div>
+                        <p style="margin-top: 15px;">Navigate to the <strong>logfiles</strong> folder in Kudu's file browser and download the <code>.dmp</code> files to your local machine.</p>
+                        <div class="info-box">
+                            <strong>Tip:</strong> Having 3 dumps with 10-second intervals allows you to compare memory growth and identify objects that are continuously accumulating.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Analyze the Memory Dump with WinDbg</h3>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">Use WinDbg with the SOS debugging extension to analyze the memory dump. Here are the detailed steps:</p>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-content">
+                        <p><strong>Check Memory Usage Summary</strong></p>
+                        <p>Use <code>!address -summary</code> to compare memory usage across the 3 dumps:</p>
+                        
+                        <p style="margin-top: 15px;"><strong>Dump 1 (First capture):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !address -summary
+
+--- Usage Summary ---------------- RgnCount ----------- Total Size -------- %ofBusy %ofTotal
+Free                                    283     7dfd`14bc9000 ( 125.989 TB)           98.43%
+Other                                   200      200`002c7000 (   2.000 TB)  99.43%    1.56%
+<span style="color: #d35400; font-weight: bold;">&lt;unknown&gt;                               353        2`dc765000 (  11.445 GB)   0.56%    0.01%</span>
+Image                                  1248        0`072da000 ( 114.852 MB)   0.01%    0.00%
+Stack                                   111        0`06110000 (  97.062 MB)   0.00%    0.00%
+Heap                                     56        0`015c6000 (  21.773 MB)   0.00%    0.00%
+
+--- State Summary ---------------- RgnCount ----------- Total Size -------- %ofBusy %ofTotal
+MEM_FREE                                285     7dfd`14e59000 ( 125.989 TB)           98.43%
+MEM_RESERVE                             183      202`dddf3000 (   2.011 TB)  99.99%    1.57%
+<span style="color: #d35400; font-weight: bold;">MEM_COMMIT                             1821        0`0d3a4000 ( 211.641 MB)   0.01%    0.00%</span></code></pre>
+
+                        <p style="margin-top: 15px;"><strong>Dump 2 (After ~10 seconds):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !address -summary
+
+--- Usage Summary ---------------- RgnCount ----------- Total Size -------- %ofBusy %ofTotal
+Free                                    283     7dfd`15b69000 ( 125.989 TB)           98.43%
+Other                                   200      200`002c7000 (   2.000 TB)  99.43%    1.56%
+<span style="color: #d35400; font-weight: bold;">&lt;unknown&gt;                               370        2`dc817000 (  11.445 GB)   0.56%    0.01%</span>
+Image                                  1248        0`072da000 ( 114.852 MB)   0.01%    0.00%
+Stack                                   108        0`050c0000 (  80.750 MB)   0.00%    0.00%
+Heap                                     64        0`015c6000 (  21.773 MB)   0.00%    0.00%
+
+--- State Summary ---------------- RgnCount ----------- Total Size -------- %ofBusy %ofTotal
+MEM_FREE                                285     7dfd`15df9000 ( 125.989 TB)           98.43%
+MEM_RESERVE                             196      202`d4ad1000 (   2.011 TB)  99.98%    1.57%
+<span style="color: #d35400; font-weight: bold;">MEM_COMMIT                             1829        0`15726000 ( 343.148 MB)   0.02%    0.00%</span></code></pre>
+
+                        <p style="margin-top: 15px;"><strong>Dump 3 (After ~20 seconds):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !address -summary
+
+--- Usage Summary ---------------- RgnCount ----------- Total Size -------- %ofBusy %ofTotal
+Free                                    284     7dfd`14b99000 ( 125.989 TB)           98.43%
+Other                                   200      200`002c7000 (   2.000 TB)  99.43%    1.56%
+<span style="color: #d35400; font-weight: bold;">&lt;unknown&gt;                               379        2`dc817000 (  11.445 GB)   0.56%    0.01%</span>
+Image                                  1248        0`072da000 ( 114.852 MB)   0.01%    0.00%
+Stack                                   108        0`06090000 (  96.562 MB)   0.00%    0.00%
+Heap                                     60        0`015c6000 (  21.773 MB)   0.00%    0.00%
+
+--- State Summary ---------------- RgnCount ----------- Total Size -------- %ofBusy %ofTotal
+MEM_FREE                                286     7dfd`14e29000 ( 125.989 TB)           98.43%
+MEM_RESERVE                             199      202`cf515000 (   2.011 TB)  99.98%    1.57%
+<span style="color: #d35400; font-weight: bold;">MEM_COMMIT                             1831        0`1bcb2000 ( 444.695 MB)   0.02%    0.00%</span></code></pre>
+
+                        <div class="warning-box" style="margin-top: 20px;">
+                            <strong>Memory Growth Comparison:</strong>
+                            <table style="width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 0.9em;">
+                                <tr style="background: #fff3cd;">
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Metric</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 1</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 2</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 3</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b;">Growth (1→3)</th>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>MEM_COMMIT</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">211.64 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">343.15 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">444.70 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b; font-weight: bold;">+233.06 MB</td>
+                                </tr>
+                                <tr style="background: #f9f9f9;">
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>&lt;unknown&gt; RgnCount</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">353</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">370</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">379</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b; font-weight: bold;">+26 regions</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <strong>Key Point:</strong> The <code>&lt;unknown&gt;</code> section represents .NET managed heap memory. Notice how <code>MEM_COMMIT</code> grows from <strong>211MB → 343MB → 444MB</strong> over ~20 seconds, confirming continuous memory allocation without release.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p><strong>Load SOS (Son of Strike) Extension</strong></p>
+                        <p>Load the .NET debugging extension:</p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; .loadby sos coreclr</code></pre>
+                        <div class="info-box">
+                            <strong>Note:</strong> For .NET Core applications, use <code>coreclr</code>. For .NET Framework, use <code>clr</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p><strong>View .NET GC Heap Information</strong></p>
+                        <p>Use <code>!sos.eeheap -gc</code> to compare GC heap structure across the 3 dumps:</p>
+                        
+                        <p style="margin-top: 15px;"><strong>Dump 1 (First capture):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !sos.eeheap -gc
+Number of GC Heaps: 1
+----------------------------------------
+Small object heap
+         segment            begin        allocated        committed allocated size       committed size      
+generation 0:
+    017eb1930cb8     017ce0800028     017ce08dbda8     017ce0ad1000 0xdbd80 (900480)     0x2d1000 (2953216)  
+generation 1:
+    017eb1930b68     017ce0000028     017ce00fbd28     017ce0101000 0xfbd00 (1031424)    0x101000 (1052672)  
+generation 2:
+    017eb19312a0     017ce2c00028     017ce2c00028     017ce2c01000                      0x1000 (4096)       
+
+<span style="color: #c0392b; font-weight: bold;">Large object heap</span>
+         segment            begin        allocated        committed allocated size       committed size      
+    017eb1930d60     017ce0c00028     017ce2000098     017ce2001000 <span style="color: #d35400; font-weight: bold;">0x1400070 (20971632)</span> 0x1401000 (20975616)
+------------------------------
+<span style="color: #d35400; font-weight: bold;">GC Allocated Heap Size:    Size: 0x160a518 (23110936) bytes.  (~22 MB)</span>
+GC Committed Heap Size:    Size: 0x1815000 (25251840) bytes.</code></pre>
+
+                        <p style="margin-top: 15px;"><strong>Dump 2 (After ~10 seconds):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !sos.eeheap -gc
+Number of GC Heaps: 1
+----------------------------------------
+Small object heap
+         segment            begin        allocated        committed allocated size       committed size      
+generation 0:
+    017eb1930cb8     017ce0800028     017ce08dbda8     017ce0ad1000 0xdbd80 (900480)     0x2d1000 (2953216)  
+generation 1:
+    017eb1930b68     017ce0000028     017ce00007d8     017ce0101000 0x7b0 (1968)         0x101000 (1052672)  
+generation 2:
+    017eb19312a0     017ce2c00028     017ce2ced4b0     017ce2cf1000 0xed488 (971912)     0xf1000 (987136)    
+
+<span style="color: #c0392b; font-weight: bold;">Large object heap (5 segments - growing!)</span>
+         segment            begin        allocated        committed allocated size       committed size      
+    017eb1930d60     017ce0c00028     017ce2a000d0     017ce2a01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1931348     017ce3000028     017ce4e000d0     017ce4e01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1931888     017ce5000028     017ce6e000d0     017ce6e01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1931dc8     017ce7000028     017ce8e000d0     017ce8e01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1932308     017ce9000028     017ceae000d0     017ceae01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+------------------------------
+<span style="color: #d35400; font-weight: bold;">GC Allocated Heap Size:    Size: 0x97fc7e8 (159369192) bytes.  (~152 MB)</span>
+GC Committed Heap Size:    Size: 0x9b09000 (162566144) bytes.</code></pre>
+
+                        <p style="margin-top: 15px;"><strong>Dump 3 (After ~20 seconds):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !sos.eeheap -gc
+Number of GC Heaps: 1
+----------------------------------------
+Small object heap
+         segment            begin        allocated        committed allocated size       committed size      
+generation 0:
+    017eb1930cb8     017ce0800028     017ce08dbda8     017ce0ad1000 0xdbd80 (900480)     0x2d1000 (2953216)  
+generation 1:
+    017eb1930b68     017ce0000028     017ce00000f8     017ce0101000 0xd0 (208)           0x101000 (1052672)  
+generation 2:
+    017eb19312a0     017ce2c00028     017ce2cee138     017ce2cf1000 0xee110 (975120)     0xf1000 (987136)    
+
+<span style="color: #c0392b; font-weight: bold;">Large object heap (9 segments - still growing!)</span>
+         segment            begin        allocated        committed allocated size       committed size      
+    017eb1930d60     017ce0c00028     017ce2a000d0     017ce2a01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1931348     017ce3000028     017ce4e000d0     017ce4e01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1931888     017ce5000028     017ce6e000d0     017ce6e01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1931dc8     017ce7000028     017ce8e000d0     017ce8e01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1932308     017ce9000028     017ceae000d0     017ceae01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1932848     017ceb000028     017cece000d0     017cece01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1932d88     017ced000028     017ceee000d0     017ceee01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb19332c8     017cef000028     017cf0e000d0     017cf0e01000 <span style="color: #d35400; font-weight: bold;">0x1e000a8 (31457448)</span> 0x1e01000 (31461376)
+    017eb1933808     017cf1000028     017cf1a00060     017cf1a01000 <span style="color: #d35400; font-weight: bold;">0xa00038 (10485816)</span>  0xa01000 (10489856) 
+------------------------------
+<span style="color: #d35400; font-weight: bold;">GC Allocated Heap Size:    Size: 0xfbfcfc0 (264228800) bytes.  (~252 MB)</span>
+GC Committed Heap Size:    Size: 0xff0d000 (267440128) bytes.</code></pre>
+
+                        <div class="warning-box" style="margin-top: 20px;">
+                            <strong>GC Heap Growth Comparison:</strong>
+                            <table style="width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 0.9em;">
+                                <tr style="background: #fff3cd;">
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Metric</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 1</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 2</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 3</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b;">Growth (1→3)</th>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>GC Allocated Heap</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">22 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">152 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">252 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b; font-weight: bold;">+230 MB</td>
+                                </tr>
+                                <tr style="background: #f9f9f9;">
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>LOH Segments</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">1</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">5</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">9</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b; font-weight: bold;">+8 segments</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>LOH Size (approx)</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">~20 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">~150 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">~262 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b; font-weight: bold;">+242 MB</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <strong>Key Finding:</strong> The <strong>Large Object Heap (LOH)</strong> is growing rapidly! Each segment is ~30MB (containing our 10MB byte arrays). Objects &gt; 85KB go directly to LOH and are rarely compacted, making LOH growth a classic memory leak indicator.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p><strong>List .NET Objects by Size</strong></p>
+                        <p>Use <code>!dumpheap -stat</code> to compare object statistics across the 3 dumps:</p>
+                        
+                        <p style="margin-top: 15px;"><strong>Dump 1 (First capture):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !dumpheap -stat
+
+              MT    Count    TotalSize Class Name
+7ffba05396c8      842        87,568 System.Reflection.RuntimeMethodInfo
+7ffba053adf8    1,170       102,960 System.Reflection.RuntimeParameterInfo
+7ffba042bf40    3,087       275,778 System.String
+017cddc3a6e0      568       888,832 Free
+<span style="color: #c0392b; font-weight: bold;">7ffba052b420      292    21,023,357 System.Byte[]</span>
+Total 15,445 objects, 23,099,283 bytes</code></pre>
+
+                        <p style="margin-top: 15px;"><strong>Dump 2 (After ~10 seconds):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !dumpheap -stat
+
+              MT    Count    TotalSize Class Name
+7ffba05396c8      822        85,488 System.Reflection.RuntimeMethodInfo
+7ffba053adf8    1,155       101,640 System.Reflection.RuntimeParameterInfo
+7ffba042bf40    3,047       272,924 System.String
+017cddc3a6e0       20       875,904 Free
+<span style="color: #c0392b; font-weight: bold;">7ffba052b420      204   157,329,165 System.Byte[]</span>
+Total 14,232 objects, 159,355,693 bytes</code></pre>
+
+                        <p style="margin-top: 15px;"><strong>Dump 3 (After ~20 seconds):</strong></p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000&gt; !dumpheap -stat
+
+              MT    Count    TotalSize Class Name
+7ffba05396c8      822        85,488 System.Reflection.RuntimeMethodInfo
+7ffba053adf8    1,155       101,640 System.Reflection.RuntimeParameterInfo
+7ffba042bf40    3,004       270,168 System.String
+017cddc3a6e0       27       892,464 Free
+<span style="color: #c0392b; font-weight: bold;">7ffba052b420      210   262,185,850 System.Byte[]</span>
+Total 14,126 objects, 264,218,750 bytes</code></pre>
+
+                        <div class="warning-box" style="margin-top: 20px;">
+                            <strong>System.Byte[] Growth Comparison:</strong>
+                            <table style="width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 0.9em;">
+                                <tr style="background: #fff3cd;">
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Metric</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 1</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 2</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Dump 3</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b;">Growth (1→3)</th>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>System.Byte[] Size</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">21 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">157 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">262 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b; font-weight: bold;">+241 MB</td>
+                                </tr>
+                                <tr style="background: #f9f9f9;">
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>System.Byte[] Count</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">292</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">204</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">210</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #27ae60;">~same count</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Avg Size per Byte[]</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">~72 KB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">~771 KB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">~1.25 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b; font-weight: bold;">17x larger</td>
+                                </tr>
+                                <tr style="background: #f9f9f9;">
+                                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>Total Heap Size</strong></td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">23 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">159 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">264 MB</td>
+                                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; color: #c0392b; font-weight: bold;">+241 MB</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="success-box">
+                            <strong>Key Finding:</strong> <code>System.Byte[]</code> is clearly the culprit! While the object count stays relatively stable (~200-290), the total size explodes from <strong>21MB → 262MB</strong>. This means large byte arrays are being allocated and retained. The heap growth is almost entirely from <code>System.Byte[]</code> objects!
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p><strong>List Specific Object Type</strong></p>
+                        <p>Use <code>!dumpheap -mt &lt;MethodTable&gt;</code> to list all <code>System.Byte[]</code> instances:</p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000> !dumpheap -mt 7ffba052b420
+         Address               MT           Size
+    017cde006410     7ffba052b420          4,120 
+    017ce08d9d50     7ffba052b420          8,216 
+    <span style="color: #d35400; font-weight: bold;">017ce0c00048     7ffba052b420     10,485,784</span>
+    <span style="color: #d35400; font-weight: bold;">017ce1600080     7ffba052b420     10,485,784</span>
+    <span style="color: #d35400; font-weight: bold;">017ce20000b8     7ffba052b420     10,485,784</span>
+    <span style="color: #d35400; font-weight: bold;">017ce3000048     7ffba052b420     10,485,784</span>
+    ... (many more 10MB objects)
+
+Statistics:
+          MT Count   TotalSize Class Name
+7ffba052b420   210 262,185,850 System.Byte[]</code></pre>
+                        <div class="info-box">
+                            <strong>Observation:</strong> Multiple <code>10,485,784</code> byte objects (exactly 10MB each) - these are our leaked memory allocations!
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p><strong>Inspect a Specific Object</strong></p>
+                        <p>Use <code>!dumpobj /d &lt;address&gt;</code> to examine one of the large objects:</p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000> !dumpobj /d 017cf1000048
+Name:        System.Byte[]
+MethodTable: 00007ffba052b420
+Tracked Type: false
+<span style="color: #d35400; font-weight: bold;">Size:        10485784(0xa00018) bytes</span>
+<span style="color: #d35400; font-weight: bold;">Array:       Rank 1, Number of elements 10485760, Type Byte</span>
+Content:     .........u...v.....aM.".t....T.u%I"w.%..>.(.J..-.U/.\...
+Fields:
+None</code></pre>
+                        <div class="info-box">
+                            <strong>Confirmed:</strong> This is a 10MB byte array (10,485,760 elements = 10MB exactly).
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p><strong>Find the Root Cause with GCRoot</strong></p>
+                        <p>Use <code>!gcroot &lt;address&gt;</code> to trace why this object cannot be garbage collected:</p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code>0:000> !gcroot 017cf1000048
+
+Thread 1588:
+    53f2a3f5a0 7ffbff3e087d System.Threading.PortableThreadPool+GateThread.GateThreadStart()
+        r13:
+          -> 017cde000028     System.Object[] 
+          -> 017ce2c7e410     System.Collections.Generic.HashSet&lt;...&gt;
+          ...
+          -> 017ce2c5f7f8     Microsoft.AspNetCore.Builder.WebApplication 
+          -> 017ce2c7b3f0     Microsoft.AspNetCore.Builder.ApplicationBuilder 
+          ...
+          -> 017ce2c7dc60     Microsoft.AspNetCore.Routing.RouteEndpointDataSource+RouteEntry[] 
+          -> 017ce2c7deb8     &lt;&gt;f__AnonymousDelegate0&lt;System.Int32, System.String&gt; 
+          <span style="color: #c0392b; font-weight: bold;">-> 017ce2c45b30     Program+&lt;&gt;c__DisplayClass0_0</span>
+          <span style="color: #c0392b; font-weight: bold;">-> 017ce2c7ba48     System.Collections.Concurrent.ConcurrentBag&lt;System.Byte[]&gt;</span>
+          -> 017ce2cedda8     System.Collections.Concurrent.ConcurrentBag&lt;System.Byte[]&gt;+WorkStealingQueue 
+          -> 017ce2cedde8     System.Byte[][] 
+          -> 017cf1000048     System.Byte[]</code></pre>
+                        <div class="success-box">
+                            <strong>Root Cause Identified!</strong><br><br>
+                            The reference chain shows:<br>
+                            <code>Program+&lt;&gt;c__DisplayClass0_0</code> &rarr; <code>ConcurrentBag&lt;System.Byte[]&gt;</code> &rarr; <code>System.Byte[]</code><br><br>
+                            <strong>What does this mean?</strong>
+                            <ul style="margin-top: 10px; margin-left: 20px;">
+                                <li><code>Program+&lt;&gt;c__DisplayClass0_0</code> is a compiler-generated closure class from Program.cs</li>
+                                <li>This closure holds a reference to a <code>ConcurrentBag&lt;byte[]&gt;</code></li>
+                                <li>The ConcurrentBag is holding all the byte arrays, preventing GC</li>
+                                <li>Since the closure is referenced by the ASP.NET Core routing pipeline, it lives for the entire application lifetime</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-content">
+                        <p><strong>Correlate with Source Code</strong></p>
+                        <p>Looking at <a href="https://github.com/breadh1/AppServicePerfTraining/blob/main/Program.cs" target="_blank"><strong>Program.cs</strong></a> line 8, we can see the root cause:</p>
+                        <pre style="background: #f5f5f5; color: #333333; border: 1px solid #ddd; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em;"><code><span style="color: #2980b9;">var</span> leakyBag = <span style="color: #2980b9;">new</span> <span style="color: #16a085;">ConcurrentBag</span>&lt;<span style="color: #2980b9;">byte</span>[]&gt;();  <span style="color: #27ae60;">// Line 8 - The culprit!</span>
+
+<span style="color: #27ae60;">// This closure captures 'leakyBag' and creates DisplayClass0_0</span>
+app.MapGet(<span style="color: #e74c3c;">"/leak"</span>, (mb) => {
+    <span style="color: #2980b9;">var</span> leakyData = <span style="color: #2980b9;">new byte</span>[mb * 1024 * 1024];
+    <span style="color: #c0392b; font-weight: bold;">leakyBag.Add(leakyData);</span>  <span style="color: #27ae60;">// Objects added but never removed!</span>
+    <span style="color: #2980b9;">return</span> <span style="color: #e74c3c;">$"Leaked {mb}MB"</span>;
+});</code></pre>
+                        <div class="warning-box">
+                            <strong>Memory Leak Pattern:</strong><br>
+                            1. Objects are continuously added to a collection<br>
+                            2. Objects are never removed or the collection is never cleared<br>
+                            3. The collection has a long lifetime (static or captured in closure)<br>
+                            4. Result: Unbounded memory growth Memory Leak
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Summary: WinDbg Analysis Commands</h3>
+            <div style="background: var(--bg-light); padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background: var(--primary); color: white;">
+                        <th style="padding: 10px; text-align: left; border: 1px solid var(--border);">Command</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid var(--border);">Purpose</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid var(--border);"><code>!address -summary</code></td>
+                        <td style="padding: 10px; border: 1px solid var(--border);">Overview of memory usage by type</td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td style="padding: 10px; border: 1px solid var(--border);"><code>.loadby sos coreclr</code></td>
+                        <td style="padding: 10px; border: 1px solid var(--border);">Load .NET Core debugging extension</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid var(--border);"><code>!sos.eeheap -gc</code></td>
+                        <td style="padding: 10px; border: 1px solid var(--border);">View GC heap segments and sizes</td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td style="padding: 10px; border: 1px solid var(--border);"><code>!dumpheap -stat</code></td>
+                        <td style="padding: 10px; border: 1px solid var(--border);">Statistics of all objects by type</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid var(--border);"><code>!dumpheap -mt &lt;MT&gt;</code></td>
+                        <td style="padding: 10px; border: 1px solid var(--border);">List all instances of a specific type</td>
+                    </tr>
+                    <tr style="background: var(--bg-light);">
+                        <td style="padding: 10px; border: 1px solid var(--border);"><code>!dumpobj /d &lt;addr&gt;</code></td>
+                        <td style="padding: 10px; border: 1px solid var(--border);">Inspect a specific object's details</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid var(--border);"><code>!gcroot &lt;addr&gt;</code></td>
+                        <td style="padding: 10px; border: 1px solid var(--border);">Find why an object cannot be GC'd</td>
+                    </tr>
+                </table>
+            </div>
+
+            <h3>Cleanup</h3>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-content">
+                        <p>After completing the lab, delete the resource group to avoid unnecessary charges:</p>
+                        <pre><code>az group delete --name &lt;your-resource-group-name&gt; --yes --no-wait</code></pre>
+                        <div class="warning-box">
+                            <strong>Important:</strong> S1 App Service Plan costs approximately $0.10/hour. Always cleanup after training!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-links">
+            <a href="manual.html">&larr; Back to Overview</a>
+            <a href="#">Next Lab &rarr;</a>
+        </div>
+
+        <footer>
+            <p>Memory Leak Training Lab | Azure App Service Performance Training</p>
+        </footer>
+    </div>
+</body>
+</html>

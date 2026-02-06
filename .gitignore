@@ -1,0 +1,19 @@
+# Build outputs
+bin/
+obj/
+publish/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Packages
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+*.docx
+*.py

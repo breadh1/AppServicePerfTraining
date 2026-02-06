@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "variables": {
+    "suffix": "[substring(uniqueString(resourceGroup().id), 0, 4)]",
+    "hostingPlanName": "[concat('asp-memdump-', variables('suffix'))]",
+    "siteName": "[concat('memdumplab', variables('suffix'))]",
+    "sku": "S1",
+    "repoURL": "https://github.com/breadh1/AppServicePerfTraining.git",
+    "branch": "main"
+  },
+  "resources": [
+    {
+      "apiVersion": "2022-09-01",
+      "name": "[variables('hostingPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "[variables('sku')]"
+      },
+      "properties": {}
+    },
+    {
+      "apiVersion": "2022-09-01",
+      "name": "[variables('siteName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+        "siteConfig": {
+          "use32BitWorkerProcess": false,
+          "alwaysOn": true
+        }
+      },
+      "resources": [
+        {
+          "apiVersion": "2022-09-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('siteName'))]"
+          ],
+          "properties": {
+            "repoUrl": "[variables('repoURL')]",
+            "branch": "[variables('branch')]",
+            "isManualIntegration": true
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "webAppUrl": {
+      "type": "string",
+      "value": "[concat('https://', variables('siteName'), '.azurewebsites.net')]"
+    }
+  }
+}
