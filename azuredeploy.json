@@ -4,7 +4,9 @@
   "variables": {
     "hostingPlanName": "[concat('asp-memdump-', uniqueString(resourceGroup().id))]",
     "siteName": "[concat('memdumplab', uniqueString(resourceGroup().id))]",
-    "sku": "B1"
+    "sku": "B1",
+    "repoURL": "https://github.com/breadh1/AppServicePerfTraining.git",
+    "branch": "main"
   },
   "resources": [
     {
@@ -31,17 +33,28 @@
           "netFrameworkVersion": "v8.0",
           "alwaysOn": true
         }
-      }
+      },
+      "resources": [
+        {
+          "apiVersion": "2022-09-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('siteName'))]"
+          ],
+          "properties": {
+            "repoUrl": "[variables('repoURL')]",
+            "branch": "[variables('branch')]",
+            "isManualIntegration": true
+          }
+        }
+      ]
     }
   ],
   "outputs": {
     "webAppUrl": {
       "type": "string",
       "value": "[concat('https://', variables('siteName'), '.azurewebsites.net')]"
-    },
-    "webAppName": {
-      "type": "string",
-      "value": "[variables('siteName')]"
     }
   }
 }
