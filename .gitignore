@@ -1,0 +1,52 @@
+# Build artifacts
+bin/
+obj/
+out/
+dist/
+build/
+
+# Dependencies
+node_modules/
+packages/
+*.dll
+*.pdb
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Logs
+*.log
+logs/
+
+# Test results
+TestResults/
+*.trx
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Azure
+local.settings.json
+.azure/
+
+# Environment files
+.env
+.env.local
+
+# Archives
+*.zip
+*.tar.gz
