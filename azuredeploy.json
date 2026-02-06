@@ -59,7 +59,7 @@
               "type": "Microsoft.Web/sites",
               "location": "[parameters('location')]",
               "dependsOn": [
-                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+                "[variables('hostingPlanName')]"
               ],
               "kind": "app,linux",
               "properties": {
@@ -68,22 +68,20 @@
                   "linuxFxVersion": "DOTNETCORE|9.0",
                   "alwaysOn": true
                 }
-              },
-              "resources": [
-                {
-                  "apiVersion": "2022-09-01",
-                  "name": "web",
-                  "type": "sourcecontrols",
-                  "dependsOn": [
-                    "[resourceId('Microsoft.Web/Sites', variables('siteName'))]"
-                  ],
-                  "properties": {
-                    "RepoUrl": "[variables('repoURL')]",
-                    "branch": "[variables('branch')]",
-                    "IsManualIntegration": true
-                  }
-                }
-              ]
+              }
+            },
+            {
+              "apiVersion": "2022-09-01",
+              "name": "[concat(variables('siteName'), '/web')]",
+              "type": "Microsoft.Web/sites/sourcecontrols",
+              "dependsOn": [
+                "[variables('siteName')]"
+              ],
+              "properties": {
+                "repoUrl": "[variables('repoURL')]",
+                "branch": "[variables('branch')]",
+                "isManualIntegration": true
+              }
             }
           ]
         }
@@ -98,6 +96,9 @@
     "webAppUrl": {
       "type": "string",
       "value": "[concat('https://', variables('siteName'), '.azurewebsites.net')]"
+    }
+  }
+}
     }
   }
 }
